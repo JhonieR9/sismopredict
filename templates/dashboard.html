@@ -625,6 +625,200 @@
             margin-left: 0.3rem;
             font-weight: 700;
         }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-section h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-section p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+        }
+
+        .country-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .country-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 0.8rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .country-option:hover {
+            border-color: var(--highlight);
+        }
+
+        .country-option.selected {
+            border-color: var(--success);
+            background: rgba(0, 212, 170, 0.1);
+        }
+
+        .country-option input[type="checkbox"] {
+            accent-color: var(--success);
+            width: 16px;
+            height: 16px;
+        }
+
+        .location-info {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .location-info .loc-icon {
+            font-size: 2rem;
+        }
+
+        .location-info .loc-details {
+            flex: 1;
+        }
+
+        .location-info .loc-details p {
+            margin: 0;
+            font-size: 0.8rem;
+        }
+
+        .location-info .loc-coords {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .btn-location {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 0.8rem;
+            transition: opacity 0.2s;
+        }
+
+        .btn-location:hover {
+            opacity: 0.9;
+        }
+
+        .btn-save-settings {
+            background: linear-gradient(135deg, var(--success), #00b894);
+            border: none;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 1rem;
+            transition: all 0.2s;
+        }
+
+        .btn-save-settings:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
+        }
+
+        .btn-close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .distance-badge {
+            font-size: 0.65rem;
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            margin-left: 0.3rem;
+        }
+
+        .user-location-marker {
+            background: #3498db;
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+
+        /* Settings button in header */
+        .btn-settings {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border) !important;
+            font-size: 1rem !important;
+            padding: 0.5rem 0.8rem !important;
+        }
     </style>
 </head>
 <body>
@@ -633,6 +827,114 @@
         <i class="fas fa-exclamation-triangle"></i>
         <span id="alertBannerText"></span>
         <span class="close-btn" onclick="closeAlertBanner()">✕</span>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal" style="position: relative;">
+            <button class="btn-close-modal" onclick="closeSettings()">✕</button>
+            <h2><i class="fas fa-cog"></i> Configuración de Alertas</h2>
+
+            <!-- Ubicación -->
+            <div class="modal-section">
+                <h3><i class="fas fa-map-marker-alt"></i> Mi Ubicación</h3>
+                <p>Permite detectar tu ubicación para mostrarte la distancia a cada sismo y priorizar alertas cercanas.</p>
+                <div class="location-info" id="locationInfo">
+                    <div class="loc-icon">📍</div>
+                    <div class="loc-details">
+                        <p id="locationText" style="font-weight: 500;">Ubicación no configurada</p>
+                        <span class="loc-coords" id="locationCoords">--</span>
+                    </div>
+                </div>
+                <button class="btn-location" onclick="requestLocation()">
+                    <i class="fas fa-location-arrow"></i> Detectar mi ubicación
+                </button>
+            </div>
+
+            <!-- Filtro de países -->
+            <div class="modal-section">
+                <h3><i class="fas fa-bell"></i> Notificaciones por País/Región</h3>
+                <p>Selecciona de qué países quieres recibir notificaciones de sismos. Si no seleccionas ninguno, recibirás alertas globales.</p>
+                <div class="country-grid" id="countryGrid">
+                    <label class="country-option" data-country="mexico">
+                        <input type="checkbox" value="mexico"> 🇲🇽 México
+                    </label>
+                    <label class="country-option" data-country="chile">
+                        <input type="checkbox" value="chile"> 🇨🇱 Chile
+                    </label>
+                    <label class="country-option" data-country="peru">
+                        <input type="checkbox" value="peru"> 🇵🇪 Perú
+                    </label>
+                    <label class="country-option" data-country="colombia">
+                        <input type="checkbox" value="colombia"> 🇨🇴 Colombia
+                    </label>
+                    <label class="country-option" data-country="ecuador">
+                        <input type="checkbox" value="ecuador"> 🇪🇨 Ecuador
+                    </label>
+                    <label class="country-option" data-country="argentina">
+                        <input type="checkbox" value="argentina"> 🇦🇷 Argentina
+                    </label>
+                    <label class="country-option" data-country="japan">
+                        <input type="checkbox" value="japan"> 🇯🇵 Japón
+                    </label>
+                    <label class="country-option" data-country="usa">
+                        <input type="checkbox" value="usa"> 🇺🇸 Estados Unidos
+                    </label>
+                    <label class="country-option" data-country="indonesia">
+                        <input type="checkbox" value="indonesia"> 🇮🇩 Indonesia
+                    </label>
+                    <label class="country-option" data-country="turkey">
+                        <input type="checkbox" value="turkey"> 🇹🇷 Turquía
+                    </label>
+                    <label class="country-option" data-country="italy">
+                        <input type="checkbox" value="italy"> 🇮🇹 Italia
+                    </label>
+                    <label class="country-option" data-country="philippines">
+                        <input type="checkbox" value="philippines"> 🇵🇭 Filipinas
+                    </label>
+                    <label class="country-option" data-country="china">
+                        <input type="checkbox" value="china"> 🇨🇳 China
+                    </label>
+                    <label class="country-option" data-country="iran">
+                        <input type="checkbox" value="iran"> 🇮🇷 Irán
+                    </label>
+                    <label class="country-option" data-country="newzealand">
+                        <input type="checkbox" value="newzealand"> 🇳🇿 Nueva Zelanda
+                    </label>
+                    <label class="country-option" data-country="guatemala">
+                        <input type="checkbox" value="guatemala"> 🇬🇹 Guatemala
+                    </label>
+                </div>
+            </div>
+
+            <!-- Magnitud mínima -->
+            <div class="modal-section">
+                <h3><i class="fas fa-sliders-h"></i> Magnitud Mínima para Alertas</h3>
+                <p>Solo recibirás notificaciones de sismos con magnitud igual o superior a:</p>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="range" id="minMagFilter" min="2" max="7" step="0.5" value="4" 
+                           style="flex: 1; accent-color: var(--highlight);"
+                           oninput="document.getElementById('minMagValue').textContent = this.value">
+                    <span id="minMagValue" style="font-size: 1.2rem; font-weight: 700; color: var(--highlight); min-width: 30px;">4</span>
+                </div>
+            </div>
+
+            <!-- Radio de proximidad -->
+            <div class="modal-section" id="proximitySection" style="display: none;">
+                <h3><i class="fas fa-bullseye"></i> Radio de Proximidad</h3>
+                <p>Notificar sismos dentro de este radio desde tu ubicación (además de los países seleccionados):</p>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="range" id="proximityRadius" min="100" max="5000" step="100" value="1000" 
+                           style="flex: 1; accent-color: #3498db;"
+                           oninput="document.getElementById('proximityValue').textContent = this.value + ' km'">
+                    <span id="proximityValue" style="font-size: 0.9rem; font-weight: 600; color: #3498db; min-width: 70px;">1000 km</span>
+                </div>
+            </div>
+
+            <button class="btn-save-settings" onclick="saveSettings()">
+                <i class="fas fa-check"></i> Guardar Configuración
+            </button>
+        </div>
     </div>
 
     <!-- Header -->
@@ -665,6 +967,7 @@
                 <option value="month_m4.5">Último mes (M4.5+)</option>
             </select>
             <button onclick="refreshData()"><i class="fas fa-sync-alt"></i> Actualizar</button>
+            <button class="btn-settings" onclick="openSettings()"><i class="fas fa-cog"></i></button>
             <button class="btn-train" onclick="trainModel()"><i class="fas fa-brain"></i> Entrenar IA</button>
             <button class="btn-predict" onclick="getPredictions()"><i class="fas fa-chart-line"></i> Predecir</button>
         </div>
@@ -1194,6 +1497,243 @@
             }
         });
 
+        // ============ GEOLOCALIZACIÓN Y FILTROS ============
+        let userLocation = null;
+        let userLocationMarker = null;
+        let notificationSettings = {
+            countries: [],
+            minMagnitude: 4.0,
+            proximityRadius: 1000, // km
+        };
+
+        // Cargar configuración guardada
+        function loadSettings() {
+            const saved = localStorage.getItem('sismopredict_settings');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    notificationSettings = { ...notificationSettings, ...parsed };
+
+                    // Restaurar ubicación
+                    if (parsed.userLocation) {
+                        userLocation = parsed.userLocation;
+                        updateLocationDisplay();
+                        showUserOnMap();
+                    }
+
+                    // Restaurar checkboxes
+                    notificationSettings.countries.forEach(country => {
+                        const checkbox = document.querySelector(`input[value="${country}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            checkbox.closest('.country-option').classList.add('selected');
+                        }
+                    });
+
+                    // Restaurar sliders
+                    document.getElementById('minMagFilter').value = notificationSettings.minMagnitude;
+                    document.getElementById('minMagValue').textContent = notificationSettings.minMagnitude;
+                    document.getElementById('proximityRadius').value = notificationSettings.proximityRadius;
+                    document.getElementById('proximityValue').textContent = notificationSettings.proximityRadius + ' km';
+
+                    if (userLocation) {
+                        document.getElementById('proximitySection').style.display = 'block';
+                    }
+                } catch (e) {
+                    console.error('Error loading settings:', e);
+                }
+            }
+        }
+
+        function saveSettings() {
+            // Obtener países seleccionados
+            const checkboxes = document.querySelectorAll('#countryGrid input[type="checkbox"]');
+            notificationSettings.countries = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    notificationSettings.countries.push(cb.value);
+                }
+            });
+
+            notificationSettings.minMagnitude = parseFloat(document.getElementById('minMagFilter').value);
+            notificationSettings.proximityRadius = parseInt(document.getElementById('proximityRadius').value);
+
+            if (userLocation) {
+                notificationSettings.userLocation = userLocation;
+            }
+
+            // Guardar en localStorage
+            localStorage.setItem('sismopredict_settings', JSON.stringify(notificationSettings));
+
+            showNotification(`Configuración guardada. ${notificationSettings.countries.length > 0 ? 'Alertas para: ' + notificationSettings.countries.length + ' países' : 'Alertas globales'}`, 'success');
+            closeSettings();
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        function requestLocation() {
+            if (!navigator.geolocation) {
+                showNotification('Tu navegador no soporta geolocalización', 'error');
+                return;
+            }
+
+            document.getElementById('locationText').textContent = 'Detectando...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                        accuracy: position.coords.accuracy,
+                    };
+
+                    updateLocationDisplay();
+                    showUserOnMap();
+                    document.getElementById('proximitySection').style.display = 'block';
+
+                    // Reverse geocoding con Nominatim
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lon}&format=json`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.display_name) {
+                                const parts = data.display_name.split(',');
+                                const shortName = parts.slice(0, 3).join(',');
+                                document.getElementById('locationText').textContent = shortName;
+                            }
+                        })
+                        .catch(() => {});
+
+                    showNotification('📍 Ubicación detectada correctamente', 'success');
+                },
+                (error) => {
+                    let msg = 'Error al obtener ubicación';
+                    if (error.code === 1) msg = 'Permiso de ubicación denegado. Actívalo en tu navegador.';
+                    if (error.code === 2) msg = 'Ubicación no disponible';
+                    if (error.code === 3) msg = 'Tiempo de espera agotado';
+                    document.getElementById('locationText').textContent = 'Error al detectar';
+                    showNotification(msg, 'error');
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        function updateLocationDisplay() {
+            if (userLocation) {
+                document.getElementById('locationText').textContent = `Lat: ${userLocation.lat.toFixed(4)}, Lon: ${userLocation.lon.toFixed(4)}`;
+                document.getElementById('locationCoords').textContent = `Precisión: ±${Math.round(userLocation.accuracy || 0)}m`;
+            }
+        }
+
+        function showUserOnMap() {
+            if (!userLocation) return;
+
+            if (userLocationMarker) {
+                map.removeLayer(userLocationMarker);
+            }
+
+            const icon = L.divIcon({
+                className: 'user-location-marker',
+                iconSize: [16, 16],
+            });
+
+            userLocationMarker = L.marker([userLocation.lat, userLocation.lon], { icon })
+                .addTo(map)
+                .bindPopup('<strong>📍 Tu ubicación</strong>');
+        }
+
+        // Calcular distancia entre dos puntos (Haversine)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Mapa de países a coordenadas bounding box
+        const countryBounds = {
+            mexico: { minLat: 14, maxLat: 33, minLon: -118, maxLon: -86 },
+            chile: { minLat: -56, maxLat: -17, minLon: -76, maxLon: -66 },
+            peru: { minLat: -18, maxLat: 0, minLon: -81, maxLon: -68 },
+            colombia: { minLat: -4, maxLat: 13, minLon: -79, maxLon: -67 },
+            ecuador: { minLat: -5, maxLat: 2, minLon: -81, maxLon: -75 },
+            argentina: { minLat: -55, maxLat: -22, minLon: -74, maxLon: -53 },
+            japan: { minLat: 24, maxLat: 46, minLon: 122, maxLon: 146 },
+            usa: { minLat: 24, maxLat: 50, minLon: -125, maxLon: -66 },
+            indonesia: { minLat: -11, maxLat: 6, minLon: 95, maxLon: 141 },
+            turkey: { minLat: 36, maxLat: 42, minLon: 26, maxLon: 45 },
+            italy: { minLat: 36, maxLat: 47, minLon: 6, maxLon: 19 },
+            philippines: { minLat: 5, maxLat: 20, minLon: 117, maxLon: 127 },
+            china: { minLat: 18, maxLat: 54, minLon: 73, maxLon: 135 },
+            iran: { minLat: 25, maxLat: 40, minLon: 44, maxLon: 63 },
+            newzealand: { minLat: -47, maxLat: -34, minLon: 166, maxLon: 179 },
+            guatemala: { minLat: 13, maxLat: 18, minLon: -92, maxLon: -88 },
+        };
+
+        function isEarthquakeInCountry(eq, country) {
+            const bounds = countryBounds[country];
+            if (!bounds) return false;
+            return eq.latitude >= bounds.minLat && eq.latitude <= bounds.maxLat &&
+                   eq.longitude >= bounds.minLon && eq.longitude <= bounds.maxLon;
+        }
+
+        function shouldNotify(eq) {
+            // Filtro de magnitud mínima
+            if (eq.magnitude < notificationSettings.minMagnitude) return false;
+
+            // Si no hay filtros de país, notificar todo
+            if (notificationSettings.countries.length === 0 && !userLocation) return true;
+
+            // Verificar si está en un país seleccionado
+            if (notificationSettings.countries.length > 0) {
+                for (const country of notificationSettings.countries) {
+                    if (isEarthquakeInCountry(eq, country)) return true;
+                }
+            }
+
+            // Verificar proximidad
+            if (userLocation && eq.latitude && eq.longitude) {
+                const distance = calculateDistance(userLocation.lat, userLocation.lon, eq.latitude, eq.longitude);
+                if (distance <= notificationSettings.proximityRadius) return true;
+            }
+
+            // Si hay filtros activos y no coincide con ninguno, no notificar
+            if (notificationSettings.countries.length > 0) return false;
+
+            return true;
+        }
+
+        function getDistanceText(eq) {
+            if (!userLocation || !eq.latitude || !eq.longitude) return '';
+            const dist = calculateDistance(userLocation.lat, userLocation.lon, eq.latitude, eq.longitude);
+            if (dist < 1) return '< 1 km';
+            if (dist < 100) return `${Math.round(dist)} km`;
+            return `${Math.round(dist).toLocaleString()} km`;
+        }
+
+        // Event listeners para checkboxes de países
+        document.querySelectorAll('#countryGrid .country-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT') {
+                    const cb = option.querySelector('input');
+                    cb.checked = !cb.checked;
+                }
+                option.classList.toggle('selected', option.querySelector('input').checked);
+            });
+        });
+
+        // Cargar settings al inicio
+        loadSettings();
+
         // ============ SISTEMA EN VIVO (SSE) ============
         let eventSource = null;
         let liveEventCount = 0;
@@ -1264,31 +1804,28 @@
             const eq = event.data;
             const severity = event.severity;
 
-            // Actualizar contador
+            // Calcular distancia si tenemos ubicación
+            eq._distance = getDistanceText(eq);
+
+            // Siempre agregar al feed en vivo (para ver todo)
             liveEventCount++;
             const badge = document.getElementById('liveCountBadge');
             badge.textContent = liveEventCount;
             badge.style.display = 'inline';
-
-            // Agregar al feed en vivo
             addToLiveFeed(eq, severity);
-
-            // Agregar al mapa
             addLiveMarkerToMap(eq, severity);
 
-            // Notificación visual
-            showLiveNotification(eq, severity);
+            // Solo notificar si pasa los filtros del usuario
+            if (shouldNotify(eq)) {
+                showLiveNotification(eq, severity);
 
-            // Alerta de banner para sismos significativos
-            if (severity === 'critical' || severity === 'high') {
-                showAlertBanner(eq, severity);
+                if (severity === 'critical' || severity === 'high') {
+                    showAlertBanner(eq, severity);
+                }
+
+                playAlertSound(severity);
+                sendBrowserNotification(eq, severity);
             }
-
-            // Sonido de alerta
-            playAlertSound(severity);
-
-            // Notificación del navegador (si tiene permisos)
-            sendBrowserNotification(eq, severity);
 
             // Actualizar stats
             refreshData();
@@ -1302,6 +1839,8 @@
                 feed.innerHTML = '';
             }
 
+            const distText = eq._distance ? `<span class="distance-badge">📍 ${eq._distance}</span>` : '';
+
             const item = document.createElement('div');
             item.className = `live-feed-item severity-${severity}`;
             item.innerHTML = `
@@ -1311,7 +1850,7 @@
                         ${eq.magnitude?.toFixed(1) || '?'}
                     </div>
                     <div style="flex: 1;">
-                        <div style="font-size: 0.85rem; font-weight: 500;">${eq.place || 'Ubicación desconocida'}</div>
+                        <div style="font-size: 0.85rem; font-weight: 500;">${eq.place || 'Ubicación desconocida'} ${distText}</div>
                         <div style="font-size: 0.7rem; color: var(--text-muted);">
                             ${new Date(eq.time).toLocaleString('es')} · Prof: ${eq.depth?.toFixed(1) || '?'} km
                         </div>
