@@ -1,5 +1,6 @@
 """Módulo para obtener datos sísmicos del USGS."""
 
+import asyncio
 import httpx
 import pandas as pd
 from datetime import datetime, timedelta
@@ -13,10 +14,17 @@ async def fetch_realtime_earthquakes(feed: str = "day_m2.5") -> dict:
     if not url:
         url = FEEDS["day_m2.5"]
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        return response.json()
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            if attempt < 2:
+                await asyncio.sleep(2)
+                continue
+            raise e
 
 
 async def fetch_historical_earthquakes(
@@ -48,7 +56,7 @@ async def fetch_historical_earthquakes(
     if max_longitude is not None:
         params["maxlongitude"] = max_longitude
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.get(USGS_BASE_URL, params=params)
         response.raise_for_status()
         return response.json()
