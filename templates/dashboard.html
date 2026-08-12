@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SismoPredict - Sistema de Predicción Sísmica</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --success: #00d4aa;
+            --warning: #ffa502;
+            --danger: #ff4757;
+            --text: #eaeaea;
+            --text-muted: #a0a0a0;
+            --card-bg: #1e2a3a;
+            --border: #2d3e50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--primary);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--highlight), var(--warning));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo i {
+            -webkit-text-fill-color: var(--highlight);
+            margin-right: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .status-online {
+            background: rgba(0, 212, 170, 0.15);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-offline {
+            background: rgba(255, 71, 87, 0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+        }
+
+        .header-controls select, .header-controls button {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .header-controls select:hover, .header-controls button:hover {
+            border-color: var(--highlight);
+        }
+
+        .btn-train {
+            background: linear-gradient(135deg, var(--highlight), #c0392b) !important;
+            border: none !important;
+            font-weight: 600;
+        }
+
+        .btn-train:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-predict {
+            background: linear-gradient(135deg, var(--success), #00b894) !important;
+            border: none !important;
+            font-weight: 600;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto 1fr;
+            height: calc(100vh - 65px);
+            gap: 0;
+        }
+
+        /* Stats Cards */
+        .stats-bar {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            background: var(--secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem 1.2rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+
+        .stat-card .sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .value-danger { color: var(--danger); }
+        .value-warning { color: var(--warning); }
+        .value-success { color: var(--success); }
+        .value-highlight { color: var(--highlight); }
+
+        /* Map */
+        .map-container {
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            background: var(--primary);
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1000;
+            background: rgba(30, 42, 58, 0.95);
+            padding: 0.8rem 1.2rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 2rem;
+            left: 1rem;
+            z-index: 1000;
+            background: rgba(30, 42, 58, 0.95);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.3rem 0;
+            font-size: 0.8rem;
+        }
+
+        .legend-circle {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .sidebar-tab.active {
+            color: var(--highlight);
+            border-bottom-color: var(--highlight);
+            background: rgba(233, 69, 96, 0.05);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .sidebar-panel {
+            display: none;
+        }
+
+        .sidebar-panel.active {
+            display: block;
+        }
+
+        /* Earthquake List */
+        .earthquake-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 0.9rem;
+            margin-bottom: 0.8rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .earthquake-item:hover {
+            border-color: var(--highlight);
+            transform: translateX(3px);
+        }
+
+        .eq-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+
+        .eq-magnitude {
+            font-size: 1.3rem;
+            font-weight: 700;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: white;
+        }
+
+        .mag-low { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .mag-medium { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .mag-high { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .mag-extreme { background: linear-gradient(135deg, #8e44ad, #6c3483); }
+
+        .eq-info {
+            flex: 1;
+            margin-left: 0.8rem;
+        }
+
+        .eq-place {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+        }
+
+        .eq-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .eq-depth {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* Predictions Panel */
+        .prediction-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            border-left: 4px solid;
+            border-right: 1px solid var(--border);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .risk-CRITICO { border-left-color: #8e44ad; }
+        .risk-ALTO { border-left-color: var(--danger); }
+        .risk-MODERADO { border-left-color: var(--warning); }
+        .risk-BAJO { border-left-color: var(--success); }
+        .risk-MINIMO { border-left-color: var(--text-muted); }
+
+        .pred-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .pred-risk {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .pred-risk-CRITICO { background: rgba(142,68,173,0.2); color: #a855f7; }
+        .pred-risk-ALTO { background: rgba(255,71,87,0.2); color: var(--danger); }
+        .pred-risk-MODERADO { background: rgba(255,165,2,0.2); color: var(--warning); }
+        .pred-risk-BAJO { background: rgba(0,212,170,0.2); color: var(--success); }
+        .pred-risk-MINIMO { background: rgba(160,160,160,0.2); color: var(--text-muted); }
+
+        .pred-prob {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--highlight);
+        }
+
+        .pred-details {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Charts Panel */
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .chart-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--text);
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--border);
+            border-top-color: var(--highlight);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.8rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease;
+            max-width: 350px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid var(--danger); }
+        .notification.warning { border-left: 4px solid var(--warning); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 50vh auto;
+            }
+            .stats-bar {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .sidebar {
+                border-left: none;
+                border-top: 1px solid var(--border);
+                max-height: 40vh;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header {
+                flex-direction: column;
+                gap: 0.8rem;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 3px;
+        }
+
+        /* Live Alert Banner */
+        .live-alert-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10000;
+            padding: 0.8rem 2rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            font-weight: 600;
+            animation: alertPulse 1s ease-in-out infinite;
+        }
+
+        .live-alert-banner.critical {
+            background: linear-gradient(135deg, #8e44ad, #6c3483);
+            color: white;
+        }
+
+        .live-alert-banner.high {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .live-alert-banner.medium {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+
+        .live-alert-banner .close-btn {
+            position: absolute;
+            right: 1rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .live-alert-banner .close-btn:hover {
+            opacity: 1;
+        }
+
+        /* Live indicator */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--success);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: livePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.3); }
+        }
+
+        /* Live feed panel */
+        .live-feed-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 0.8rem;
+            margin-bottom: 0.6rem;
+            border: 1px solid var(--border);
+            border-left: 3px solid;
+            animation: slideInLeft 0.3s ease;
+            position: relative;
+        }
+
+        .live-feed-item.severity-critical {
+            border-left-color: #8e44ad;
+            background: rgba(142, 68, 173, 0.1);
+        }
+
+        .live-feed-item.severity-high {
+            border-left-color: var(--danger);
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .live-feed-item.severity-medium {
+            border-left-color: var(--warning);
+        }
+
+        .live-feed-item.severity-low {
+            border-left-color: var(--success);
+        }
+
+        .live-feed-item .new-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--highlight);
+            color: white;
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-weight: 700;
+            animation: fadeOut 10s forwards;
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            0%, 80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .live-count-badge {
+            background: var(--highlight);
+            color: white;
+            font-size: 0.65rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            margin-left: 0.3rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <!-- Live Alert Banner -->
+    <div class="live-alert-banner" id="alertBanner">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="alertBannerText"></span>
+        <span class="close-btn" onclick="closeAlertBanner()">✕</span>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo"><i class="fas fa-globe-americas"></i> SismoPredict</div>
+            <div class="status-badge status-online" id="statusBadge">
+                <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                <span>EN VIVO</span>
+            </div>
+            <div class="live-indicator" id="liveIndicator">
+                <div class="live-dot"></div>
+                <span id="liveStatus">Conectando...</span>
+            </div>
+        </div>
+        <div class="header-controls">
+            <select id="regionSelect">
+                <option value="">🌍 Global</option>
+                <option value="mexico">🇲🇽 México</option>
+                <option value="chile">🇨🇱 Chile</option>
+                <option value="japon">🇯🇵 Japón</option>
+                <option value="california">🇺🇸 California</option>
+                <option value="indonesia">🇮🇩 Indonesia</option>
+            </select>
+            <select id="feedSelect">
+                <option value="day_m2.5">Último día (M2.5+)</option>
+                <option value="day_m4.5">Último día (M4.5+)</option>
+                <option value="week_m4.5">Última semana (M4.5+)</option>
+                <option value="week_m2.5">Última semana (M2.5+)</option>
+                <option value="month_m4.5">Último mes (M4.5+)</option>
+            </select>
+            <button onclick="refreshData()"><i class="fas fa-sync-alt"></i> Actualizar</button>
+            <button class="btn-train" onclick="trainModel()"><i class="fas fa-brain"></i> Entrenar IA</button>
+            <button class="btn-predict" onclick="getPredictions()"><i class="fas fa-chart-line"></i> Predecir</button>
+        </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="main-container">
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="label">Sismos Detectados</div>
+                <div class="value value-highlight" id="totalQuakes">--</div>
+                <div class="sub" id="totalQuakesPeriod">Cargando...</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Magnitud Máxima</div>
+                <div class="value value-danger" id="maxMag">--</div>
+                <div class="sub" id="maxMagPlace">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Magnitud Promedio</div>
+                <div class="value value-warning" id="avgMag">--</div>
+                <div class="sub">En el periodo</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Alertas Tsunami</div>
+                <div class="value value-danger" id="tsunamiCount">0</div>
+                <div class="sub">Eventos con alerta</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Modelo IA</div>
+                <div class="value value-success" id="modelStatus">--</div>
+                <div class="sub" id="modelAccuracy">--</div>
+            </div>
+        </div>
+
+        <!-- Map -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-legend">
+                <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem;">Magnitud</div>
+                <div class="legend-item"><div class="legend-circle" style="background: #27ae60;"></div> &lt; 4.0</div>
+                <div class="legend-item"><div class="legend-circle" style="background: #f39c12;"></div> 4.0 - 5.4</div>
+                <div class="legend-item"><div class="legend-circle" style="background: #e74c3c;"></div> 5.5 - 6.9</div>
+                <div class="legend-item"><div class="legend-circle" style="background: #8e44ad;"></div> ≥ 7.0</div>
+                <div class="legend-item" style="margin-top: 0.5rem;"><div class="legend-circle" style="background: rgba(233,69,96,0.3); border-color: var(--highlight);"></div> Zona de predicción</div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <div class="sidebar-tab active" onclick="switchTab('live')">
+                    <i class="fas fa-satellite-dish"></i> En Vivo <span class="live-count-badge" id="liveCountBadge" style="display:none;">0</span>
+                </div>
+                <div class="sidebar-tab" onclick="switchTab('recent')">
+                    <i class="fas fa-list"></i> Recientes
+                </div>
+                <div class="sidebar-tab" onclick="switchTab('predictions')">
+                    <i class="fas fa-brain"></i> Predicciones
+                </div>
+                <div class="sidebar-tab" onclick="switchTab('charts')">
+                    <i class="fas fa-chart-bar"></i> Gráficas
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <!-- Live Feed -->
+                <div class="sidebar-panel active" id="panel-live">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">
+                            <i class="fas fa-broadcast-tower"></i> Actualizaciones cada 30 segundos
+                        </div>
+                        <div id="liveConnectionStatus" style="font-size: 0.7rem; color: var(--success);">● Conectado</div>
+                    </div>
+                    <div id="liveFeed">
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem; font-size: 0.85rem;">
+                            <i class="fas fa-satellite-dish" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
+                            Esperando nuevos sismos...<br>
+                            <small>Se notificará automáticamente cuando se detecte actividad sísmica nueva.</small>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Recent Earthquakes -->
+                <div class="sidebar-panel" id="panel-recent">
+                    <div class="loading" id="loadingRecent">
+                        <div class="spinner"></div> Cargando sismos...
+                    </div>
+                    <div id="earthquakeList"></div>
+                </div>
+
+                <!-- Predictions -->
+                <div class="sidebar-panel" id="panel-predictions">
+                    <div id="predictionsContent">
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            <i class="fas fa-brain" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
+                            Haz clic en "Entrenar IA" para entrenar el modelo, luego en "Predecir" para generar predicciones.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="sidebar-panel" id="panel-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">Distribución por Magnitud</div>
+                        <canvas id="magChart" height="200"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Profundidad vs Magnitud</div>
+                        <canvas id="depthChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ MAPA ============
+        const map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            zoomControl: true,
+            attributionControl: true,
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Capas de marcadores
+        let earthquakeLayer = L.layerGroup().addTo(map);
+        let predictionLayer = L.layerGroup().addTo(map);
+
+        // ============ DATOS ============
+        let currentEarthquakes = [];
+        let charts = {};
+
+        async function fetchRealtimeData() {
+            const feed = document.getElementById('feedSelect').value;
+            try {
+                const response = await fetch(`/api/earthquakes/realtime?feed=${feed}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentEarthquakes = data.earthquakes;
+                    updateMap(data.earthquakes);
+                    updateList(data.earthquakes);
+                    updateStats(data.earthquakes);
+                    updateCharts(data.earthquakes);
+                }
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                showNotification('Error al obtener datos sísmicos', 'error');
+            }
+        }
+
+        function updateMap(earthquakes) {
+            earthquakeLayer.clearLayers();
+
+            earthquakes.forEach(eq => {
+                if (!eq.latitude || !eq.longitude) return;
+
+                const color = getColor(eq.magnitude);
+                const radius = getRadius(eq.magnitude);
+
+                const marker = L.circleMarker([eq.latitude, eq.longitude], {
+                    radius: radius,
+                    fillColor: color,
+                    color: color,
+                    weight: 1,
+                    opacity: 0.8,
+                    fillOpacity: 0.6,
+                }).addTo(earthquakeLayer);
+
+                marker.bindPopup(`
+                    <div style="font-family: system-ui; min-width: 200px;">
+                        <h3 style="margin: 0 0 0.5rem; color: ${color};">M ${eq.magnitude}</h3>
+                        <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>${eq.place}</strong></p>
+                        <p style="margin: 0.2rem 0; font-size: 0.8rem; color: #666;">
+                            📍 ${eq.latitude.toFixed(3)}, ${eq.longitude.toFixed(3)}<br>
+                            📏 Profundidad: ${eq.depth} km<br>
+                            🕐 ${new Date(eq.time).toLocaleString('es')}
+                        </p>
+                        ${eq.tsunami ? '<p style="color: #e74c3c; font-weight: bold;">⚠️ Alerta de Tsunami</p>' : ''}
+                    </div>
+                `);
+            });
+        }
+
+        function updateList(earthquakes) {
+            const list = document.getElementById('earthquakeList');
+            const loading = document.getElementById('loadingRecent');
+            loading.style.display = 'none';
+
+            if (!earthquakes.length) {
+                list.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay sismos en este periodo.</p>';
+                return;
+            }
+
+            list.innerHTML = earthquakes.slice(0, 50).map(eq => `
+                <div class="earthquake-item" onclick="focusQuake(${eq.latitude}, ${eq.longitude}, ${eq.magnitude})">
+                    <div class="eq-header">
+                        <div class="eq-magnitude ${getMagClass(eq.magnitude)}">${eq.magnitude?.toFixed(1) || '?'}</div>
+                        <div class="eq-info">
+                            <div class="eq-place">${eq.place || 'Ubicación desconocida'}</div>
+                            <div class="eq-time">${timeAgo(eq.time)}</div>
+                            <div class="eq-depth">Profundidad: ${eq.depth?.toFixed(1) || '?'} km</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats(earthquakes) {
+            const mags = earthquakes.map(e => e.magnitude).filter(m => m != null);
+
+            document.getElementById('totalQuakes').textContent = earthquakes.length;
+            document.getElementById('totalQuakesPeriod').textContent = `Feed: ${document.getElementById('feedSelect').selectedOptions[0].text}`;
+
+            if (mags.length > 0) {
+                const maxMag = Math.max(...mags);
+                const maxEq = earthquakes.find(e => e.magnitude === maxMag);
+                document.getElementById('maxMag').textContent = maxMag.toFixed(1);
+                document.getElementById('maxMagPlace').textContent = maxEq?.place?.substring(0, 30) || '--';
+
+                const avg = mags.reduce((a, b) => a + b, 0) / mags.length;
+                document.getElementById('avgMag').textContent = avg.toFixed(2);
+            }
+
+            const tsunamis = earthquakes.filter(e => e.tsunami > 0).length;
+            document.getElementById('tsunamiCount').textContent = tsunamis;
+        }
+
+        function updateCharts(earthquakes) {
+            const mags = earthquakes.map(e => e.magnitude).filter(m => m != null);
+
+            // Magnitud distribution
+            const bins = { '2-3': 0, '3-4': 0, '4-5': 0, '5-6': 0, '6-7': 0, '7+': 0 };
+            mags.forEach(m => {
+                if (m < 3) bins['2-3']++;
+                else if (m < 4) bins['3-4']++;
+                else if (m < 5) bins['4-5']++;
+                else if (m < 6) bins['5-6']++;
+                else if (m < 7) bins['6-7']++;
+                else bins['7+']++;
+            });
+
+            if (charts.mag) charts.mag.destroy();
+            const magCtx = document.getElementById('magChart').getContext('2d');
+            charts.mag = new Chart(magCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(bins),
+                    datasets: [{
+                        label: 'Sismos',
+                        data: Object.values(bins),
+                        backgroundColor: ['#27ae60', '#2ecc71', '#f39c12', '#e67e22', '#e74c3c', '#8e44ad'],
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { color: '#a0a0a0' }, grid: { color: '#2d3e50' } },
+                        x: { ticks: { color: '#a0a0a0' }, grid: { display: false } }
+                    }
+                }
+            });
+
+            // Depth vs Magnitude scatter
+            const depthData = earthquakes
+                .filter(e => e.magnitude && e.depth)
+                .map(e => ({ x: e.depth, y: e.magnitude }));
+
+            if (charts.depth) charts.depth.destroy();
+            const depthCtx = document.getElementById('depthChart').getContext('2d');
+            charts.depth = new Chart(depthCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Sismos',
+                        data: depthData,
+                        backgroundColor: 'rgba(233, 69, 96, 0.5)',
+                        borderColor: 'rgba(233, 69, 96, 0.8)',
+                        pointRadius: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'Profundidad (km)', color: '#a0a0a0' }, ticks: { color: '#a0a0a0' }, grid: { color: '#2d3e50' } },
+                        y: { title: { display: true, text: 'Magnitud', color: '#a0a0a0' }, ticks: { color: '#a0a0a0' }, grid: { color: '#2d3e50' } }
+                    }
+                }
+            });
+        }
+
+        // ============ PREDICCIONES ============
+        async function trainModel() {
+            showNotification('Entrenando modelo de IA... Esto puede tomar unos minutos.', 'warning');
+            document.getElementById('modelStatus').textContent = '⏳';
+
+            try {
+                const response = await fetch('/api/train?years_back=3&min_magnitude=2.5', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('modelStatus').textContent = '✅ Listo';
+                    document.getElementById('modelAccuracy').textContent =
+                        `Accuracy: ${(data.metrics.classifier_accuracy * 100).toFixed(1)}%`;
+                    showNotification(`Modelo entrenado con ${data.data_points} sismos. Accuracy: ${(data.metrics.classifier_accuracy * 100).toFixed(1)}%`, 'success');
+                } else {
+                    document.getElementById('modelStatus').textContent = '❌ Error';
+                    showNotification(`Error: ${data.message}`, 'error');
+                }
+            } catch (err) {
+                document.getElementById('modelStatus').textContent = '❌ Error';
+                showNotification('Error al entrenar el modelo', 'error');
+            }
+        }
+
+        async function getPredictions() {
+            const region = document.getElementById('regionSelect').value;
+            showNotification('Generando predicciones...', 'warning');
+
+            try {
+                const url = `/api/predict?days_back=90${region ? '&region=' + region : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayPredictions(data);
+                    showPredictionsOnMap(data.predictions);
+                    switchTab('predictions');
+                    showNotification(`${data.significant_predictions} zonas con actividad predicha`, 'success');
+                } else {
+                    showNotification(`Error: ${data.message}`, 'error');
+                }
+            } catch (err) {
+                showNotification('Error al generar predicciones', 'error');
+            }
+        }
+
+        function displayPredictions(data) {
+            const container = document.getElementById('predictionsContent');
+
+            if (!data.predictions || data.predictions.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay predicciones significativas para esta región.</p>';
+                return;
+            }
+
+            let html = `
+                <div style="margin-bottom: 1rem; padding: 0.8rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        <strong>Ventana:</strong> ${data.prediction_window}<br>
+                        <strong>Zonas analizadas:</strong> ${data.total_zones_analyzed}<br>
+                        <strong>Predicciones significativas:</strong> ${data.significant_predictions}<br>
+                        <strong>Precisión del modelo:</strong> ${data.model_accuracy ? (data.model_accuracy * 100).toFixed(1) + '%' : 'N/A'}
+                    </div>
+                </div>
+            `;
+
+            html += data.predictions.slice(0, 30).map(pred => `
+                <div class="prediction-item risk-${pred.risk_level}">
+                    <div class="pred-header">
+                        <span class="pred-risk pred-risk-${pred.risk_level}">${pred.risk_level}</span>
+                        <span class="pred-prob">${(pred.probability * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="pred-details">
+                        📍 Lat: ${pred.latitude.toFixed(1)}, Lon: ${pred.longitude.toFixed(1)}<br>
+                        🎯 Magnitud estimada: <strong>${pred.predicted_max_magnitude}</strong><br>
+                        📊 Historial: ${pred.event_count_history} eventos (máx: ${pred.historical_max_magnitude})<br>
+                        📐 b-value: ${pred.b_value}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        function showPredictionsOnMap(predictions) {
+            predictionLayer.clearLayers();
+
+            predictions.forEach(pred => {
+                if (pred.probability < 0.15) return;
+
+                const color = pred.risk_level === 'CRITICO' ? '#8e44ad' :
+                              pred.risk_level === 'ALTO' ? '#e74c3c' :
+                              pred.risk_level === 'MODERADO' ? '#f39c12' : '#00d4aa';
+
+                const circle = L.circle([pred.latitude, pred.longitude], {
+                    radius: pred.probability * 200000,
+                    fillColor: color,
+                    color: color,
+                    weight: 2,
+                    opacity: 0.7,
+                    fillOpacity: 0.15,
+                    dashArray: '5, 5',
+                }).addTo(predictionLayer);
+
+                circle.bindPopup(`
+                    <div style="font-family: system-ui;">
+                        <h3 style="color: ${color}; margin: 0;">Predicción: ${pred.risk_level}</h3>
+                        <p>Probabilidad: <strong>${(pred.probability * 100).toFixed(1)}%</strong></p>
+                        <p>Magnitud estimada: <strong>${pred.predicted_max_magnitude}</strong></p>
+                        <p>Historial: ${pred.event_count_history} eventos</p>
+                    </div>
+                `);
+            });
+        }
+
+        // ============ UTILIDADES ============
+        function getColor(mag) {
+            if (mag >= 7) return '#8e44ad';
+            if (mag >= 5.5) return '#e74c3c';
+            if (mag >= 4) return '#f39c12';
+            return '#27ae60';
+        }
+
+        function getRadius(mag) {
+            if (mag >= 7) return 15;
+            if (mag >= 6) return 12;
+            if (mag >= 5) return 9;
+            if (mag >= 4) return 7;
+            return 5;
+        }
+
+        function getMagClass(mag) {
+            if (mag >= 7) return 'mag-extreme';
+            if (mag >= 5.5) return 'mag-high';
+            if (mag >= 4) return 'mag-medium';
+            return 'mag-low';
+        }
+
+        function timeAgo(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+
+            if (diff < 60) return 'Hace unos segundos';
+            if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
+            if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} horas`;
+            return `Hace ${Math.floor(diff / 86400)} días`;
+        }
+
+        function focusQuake(lat, lon, mag) {
+            map.setView([lat, lon], 8);
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
+
+            const tabs = ['live', 'recent', 'predictions', 'charts'];
+            const idx = tabs.indexOf(tabName) + 1;
+            document.querySelector(`.sidebar-tab:nth-child(${idx})`).classList.add('active');
+            document.getElementById(`panel-${tabName}`).classList.add('active');
+        }
+
+        function refreshData() {
+            document.getElementById('loadingRecent').style.display = 'flex';
+            fetchRealtimeData();
+        }
+
+        function showNotification(message, type = 'success') {
+            const existing = document.querySelector('.notification');
+            if (existing) existing.remove();
+
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span style="font-size: 0.85rem;">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 5000);
+        }
+
+        // ============ INICIALIZACIÓN ============
+        async function init() {
+            await fetchRealtimeData();
+            checkModelStatus();
+        }
+
+        async function checkModelStatus() {
+            try {
+                const response = await fetch('/api/model/status');
+                const data = await response.json();
+
+                if (data.is_trained) {
+                    document.getElementById('modelStatus').textContent = '✅ Listo';
+                    document.getElementById('modelAccuracy').textContent =
+                        `Accuracy: ${(data.metrics.classifier_accuracy * 100).toFixed(1)}%`;
+                } else {
+                    document.getElementById('modelStatus').textContent = '⚠️ Sin entrenar';
+                    document.getElementById('modelAccuracy').textContent = 'Requiere entrenamiento';
+                }
+            } catch (err) {
+                document.getElementById('modelStatus').textContent = '❌ Error';
+            }
+        }
+
+        // Auto-refresh cada 5 minutos
+        setInterval(fetchRealtimeData, 300000);
+
+        // Event listeners
+        document.getElementById('feedSelect').addEventListener('change', fetchRealtimeData);
+        document.getElementById('regionSelect').addEventListener('change', () => {
+            const region = document.getElementById('regionSelect').value;
+            if (region) {
+                const regions = {
+                    mexico: [23, -102, 5],
+                    chile: [-35, -71, 4],
+                    japon: [36, 138, 5],
+                    california: [37, -120, 6],
+                    indonesia: [-2, 118, 4],
+                };
+                if (regions[region]) {
+                    map.setView([regions[region][0], regions[region][1]], regions[region][2]);
+                }
+            } else {
+                map.setView([20, 0], 2);
+            }
+        });
+
+        // ============ SISTEMA EN VIVO (SSE) ============
+        let eventSource = null;
+        let liveEventCount = 0;
+        let liveEvents = [];
+        const MAX_LIVE_EVENTS = 100;
+
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/api/live/stream');
+
+            eventSource.onopen = () => {
+                document.getElementById('liveStatus').textContent = 'Monitoreando';
+                document.getElementById('liveConnectionStatus').innerHTML = '<span style="color: var(--success);">● Conectado</span>';
+                document.getElementById('liveIndicator').style.opacity = '1';
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleLiveEvent(data);
+                } catch (e) {
+                    console.error('Error parsing SSE event:', e);
+                }
+            };
+
+            eventSource.onerror = () => {
+                document.getElementById('liveStatus').textContent = 'Reconectando...';
+                document.getElementById('liveConnectionStatus').innerHTML = '<span style="color: var(--warning);">● Reconectando</span>';
+                document.getElementById('liveIndicator').style.opacity = '0.5';
+
+                // EventSource reconecta automáticamente
+                setTimeout(() => {
+                    if (eventSource.readyState === EventSource.CLOSED) {
+                        connectSSE();
+                    }
+                }, 5000);
+            };
+        }
+
+        function handleLiveEvent(event) {
+            switch (event.type) {
+                case 'connected':
+                    console.log('📡 Conectado al monitor sísmico');
+                    break;
+
+                case 'new_earthquake':
+                    handleNewEarthquake(event);
+                    break;
+
+                case 'batch_summary':
+                    showNotification(`${event.count} nuevos sismos detectados (máx: M${event.max_magnitude.toFixed(1)})`, 'warning');
+                    break;
+
+                case 'initial_load':
+                    console.log(`📡 Carga inicial: ${event.count} sismos en el sistema`);
+                    break;
+
+                case 'error':
+                    console.warn('⚠️ Error en monitor:', event.message);
+                    break;
+            }
+        }
+
+        function handleNewEarthquake(event) {
+            const eq = event.data;
+            const severity = event.severity;
+
+            // Actualizar contador
+            liveEventCount++;
+            const badge = document.getElementById('liveCountBadge');
+            badge.textContent = liveEventCount;
+            badge.style.display = 'inline';
+
+            // Agregar al feed en vivo
+            addToLiveFeed(eq, severity);
+
+            // Agregar al mapa
+            addLiveMarkerToMap(eq, severity);
+
+            // Notificación visual
+            showLiveNotification(eq, severity);
+
+            // Alerta de banner para sismos significativos
+            if (severity === 'critical' || severity === 'high') {
+                showAlertBanner(eq, severity);
+            }
+
+            // Sonido de alerta
+            playAlertSound(severity);
+
+            // Notificación del navegador (si tiene permisos)
+            sendBrowserNotification(eq, severity);
+
+            // Actualizar stats
+            refreshData();
+        }
+
+        function addToLiveFeed(eq, severity) {
+            const feed = document.getElementById('liveFeed');
+
+            // Remover el placeholder si existe
+            if (liveEvents.length === 0) {
+                feed.innerHTML = '';
+            }
+
+            const item = document.createElement('div');
+            item.className = `live-feed-item severity-${severity}`;
+            item.innerHTML = `
+                <span class="new-badge">NUEVO</span>
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <div class="eq-magnitude ${getMagClass(eq.magnitude)}" style="width: 40px; height: 40px; font-size: 1rem;">
+                        ${eq.magnitude?.toFixed(1) || '?'}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.85rem; font-weight: 500;">${eq.place || 'Ubicación desconocida'}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted);">
+                            ${new Date(eq.time).toLocaleString('es')} · Prof: ${eq.depth?.toFixed(1) || '?'} km
+                        </div>
+                        ${eq.tsunami ? '<div style="font-size: 0.7rem; color: var(--danger); font-weight: 600;">⚠️ ALERTA TSUNAMI</div>' : ''}
+                    </div>
+                </div>
+            `;
+
+            item.onclick = () => {
+                if (eq.latitude && eq.longitude) {
+                    map.setView([eq.latitude, eq.longitude], 8);
+                }
+            };
+            item.style.cursor = 'pointer';
+
+            // Insertar al inicio
+            feed.insertBefore(item, feed.firstChild);
+
+            // Limitar cantidad
+            liveEvents.unshift(eq);
+            if (liveEvents.length > MAX_LIVE_EVENTS) {
+                liveEvents.pop();
+                if (feed.lastChild) feed.removeChild(feed.lastChild);
+            }
+        }
+
+        function addLiveMarkerToMap(eq, severity) {
+            if (!eq.latitude || !eq.longitude) return;
+
+            const color = severity === 'critical' ? '#8e44ad' :
+                          severity === 'high' ? '#e74c3c' :
+                          severity === 'medium' ? '#f39c12' : '#27ae60';
+
+            // Marcador con animación de pulso
+            const marker = L.circleMarker([eq.latitude, eq.longitude], {
+                radius: getRadius(eq.magnitude || 3),
+                fillColor: color,
+                color: 'white',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8,
+            }).addTo(earthquakeLayer);
+
+            marker.bindPopup(`
+                <div style="font-family: system-ui; min-width: 200px;">
+                    <h3 style="margin: 0 0 0.5rem; color: ${color};">🔴 NUEVO - M ${eq.magnitude?.toFixed(1)}</h3>
+                    <p style="margin: 0.3rem 0; font-size: 0.9rem;"><strong>${eq.place}</strong></p>
+                    <p style="margin: 0.2rem 0; font-size: 0.8rem; color: #666;">
+                        📍 ${eq.latitude?.toFixed(3)}, ${eq.longitude?.toFixed(3)}<br>
+                        📏 Profundidad: ${eq.depth?.toFixed(1)} km<br>
+                        🕐 ${new Date(eq.time).toLocaleString('es')}
+                    </p>
+                    ${eq.tsunami ? '<p style="color: #e74c3c; font-weight: bold;">⚠️ ALERTA DE TSUNAMI</p>' : ''}
+                </div>
+            `);
+
+            // Efecto de onda expansiva para sismos significativos
+            if (severity === 'critical' || severity === 'high') {
+                const pulse = L.circle([eq.latitude, eq.longitude], {
+                    radius: 50000,
+                    fillColor: color,
+                    color: color,
+                    weight: 1,
+                    opacity: 0.5,
+                    fillOpacity: 0.1,
+                }).addTo(earthquakeLayer);
+
+                // Animar expansión
+                let pulseRadius = 50000;
+                const pulseInterval = setInterval(() => {
+                    pulseRadius += 20000;
+                    pulse.setRadius(pulseRadius);
+                    pulse.setStyle({ opacity: Math.max(0, 0.5 - pulseRadius / 500000) });
+                    if (pulseRadius > 300000) {
+                        clearInterval(pulseInterval);
+                        earthquakeLayer.removeLayer(pulse);
+                    }
+                }, 100);
+
+                // Centrar mapa en el sismo
+                map.setView([eq.latitude, eq.longitude], 6);
+                marker.openPopup();
+            }
+        }
+
+        function showLiveNotification(eq, severity) {
+            const icons = {
+                critical: '🚨',
+                high: '⚠️',
+                medium: '🔔',
+                low: '📍',
+            };
+
+            const types = {
+                critical: 'error',
+                high: 'error',
+                medium: 'warning',
+                low: 'success',
+            };
+
+            const message = `${icons[severity]} M${eq.magnitude?.toFixed(1)} - ${eq.place || 'Sismo detectado'}`;
+            showNotification(message, types[severity]);
+        }
+
+        function showAlertBanner(eq, severity) {
+            const banner = document.getElementById('alertBanner');
+            const text = document.getElementById('alertBannerText');
+
+            banner.className = `live-alert-banner ${severity}`;
+            text.textContent = `🚨 SISMO M${eq.magnitude?.toFixed(1)} detectado: ${eq.place || 'Ubicación desconocida'} - Profundidad: ${eq.depth?.toFixed(1)} km`;
+            banner.style.display = 'flex';
+
+            // Auto-cerrar después de 30 segundos
+            setTimeout(() => closeAlertBanner(), 30000);
+        }
+
+        function closeAlertBanner() {
+            document.getElementById('alertBanner').style.display = 'none';
+        }
+
+        function playAlertSound(severity) {
+            // Generar sonido de alerta usando Web Audio API
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                if (severity === 'critical') {
+                    oscillator.frequency.value = 880;
+                    gainNode.gain.value = 0.3;
+                    oscillator.start();
+                    setTimeout(() => { oscillator.frequency.value = 660; }, 200);
+                    setTimeout(() => { oscillator.frequency.value = 880; }, 400);
+                    setTimeout(() => { oscillator.stop(); }, 600);
+                } else if (severity === 'high') {
+                    oscillator.frequency.value = 660;
+                    gainNode.gain.value = 0.2;
+                    oscillator.start();
+                    setTimeout(() => { oscillator.stop(); }, 400);
+                } else if (severity === 'medium') {
+                    oscillator.frequency.value = 440;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    setTimeout(() => { oscillator.stop(); }, 200);
+                }
+                // No sound for low severity
+            } catch (e) {
+                // Audio not available
+            }
+        }
+
+        function sendBrowserNotification(eq, severity) {
+            if (!('Notification' in window)) return;
+
+            if (Notification.permission === 'granted') {
+                createNotification(eq, severity);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        createNotification(eq, severity);
+                    }
+                });
+            }
+        }
+
+        function createNotification(eq, severity) {
+            if (severity === 'low') return; // Solo notificar sismos M4.0+
+
+            const icons = { critical: '🚨', high: '⚠️', medium: '🔔' };
+            const notif = new Notification(`${icons[severity]} Sismo M${eq.magnitude?.toFixed(1)}`, {
+                body: `${eq.place || 'Ubicación desconocida'}\nProfundidad: ${eq.depth?.toFixed(1)} km\n${new Date(eq.time).toLocaleString('es')}`,
+                icon: '/static/favicon.ico',
+                tag: `earthquake-${eq.id}`,
+                requireInteraction: severity === 'critical',
+            });
+
+            notif.onclick = () => {
+                window.focus();
+                if (eq.latitude && eq.longitude) {
+                    map.setView([eq.latitude, eq.longitude], 8);
+                }
+                notif.close();
+            };
+        }
+
+        // Solicitar permisos de notificación al cargar
+        if ('Notification' in window && Notification.permission === 'default') {
+            // Esperar interacción del usuario para pedir permisos
+            document.addEventListener('click', function requestNotifPermission() {
+                Notification.requestPermission();
+                document.removeEventListener('click', requestNotifPermission);
+            }, { once: true });
+        }
+
+        // Iniciar SSE
+        connectSSE();
+
+        // Iniciar
+        init();
+    </script>
+</body>
+</html>
