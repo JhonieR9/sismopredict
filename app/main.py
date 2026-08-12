@@ -44,8 +44,9 @@ app = FastAPI(
 )
 
 # Configurar archivos estáticos y templates
-static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
-templates_dir = os.path.join(os.path.dirname(__file__), "..", "templates")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+static_dir = os.path.join(BASE_DIR, "static")
+templates_dir = os.path.join(BASE_DIR, "templates")
 
 os.makedirs(static_dir, exist_ok=True)
 os.makedirs(templates_dir, exist_ok=True)
@@ -55,6 +56,12 @@ templates = Jinja2Templates(directory=templates_dir)
 
 
 # ============ PAGES ============
+
+@app.get("/health")
+async def health_check():
+    """Health check para Railway."""
+    return {"status": "ok"}
+
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
