@@ -79,7 +79,7 @@ async def health_check():
 async def dashboard(request: Request):
     """Página principal - Dashboard."""
     try:
-        return templates.TemplateResponse("dashboard.html", {"request": request})
+        return templates.TemplateResponse(request, "dashboard.html")
     except Exception as e:
         return HTMLResponse(f"<h1>Error</h1><pre>{e}</pre><p>Templates dir: {templates_dir}</p><p>Files: {list(templates_dir.iterdir()) if templates_dir.exists() else 'DIR NOT FOUND'}</p>")
 
