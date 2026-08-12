@@ -14,9 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo el proyecto
 COPY . .
 
-# Puerto (Railway y Render usan la variable PORT)
-ENV PORT=8000
-EXPOSE ${PORT}
+EXPOSE 8080
 
-# Comando de inicio
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+# Comando de inicio - Railway inyecta PORT=8080
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
