@@ -44,15 +44,27 @@ app = FastAPI(
 )
 
 # Configurar archivos estáticos y templates
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-static_dir = os.path.join(BASE_DIR, "static")
-templates_dir = os.path.join(BASE_DIR, "templates")
+from pathlib import Path
 
-os.makedirs(static_dir, exist_ok=True)
-os.makedirs(templates_dir, exist_ok=True)
+# Determinar directorio raíz del proyecto
+BASE_DIR = Path(__file__).resolve().parent.parent
+static_dir = BASE_DIR / "static"
+templates_dir = BASE_DIR / "templates"
 
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-templates = Jinja2Templates(directory=templates_dir)
+# Fallback: si no existe templates, buscar en /app
+if not templates_dir.exists():
+    BASE_DIR = Path("/app")
+    static_dir = BASE_DIR / "static"
+    templates_dir = BASE_DIR / "templates"
+
+static_dir.mkdir(parents=True, exist_ok=True)
+templates_dir.mkdir(parents=True, exist_ok=True)
+
+print(f"📂 BASE_DIR: {BASE_DIR}")
+print(f"📂 Templates: {templates_dir} (exists: {templates_dir.exists()})")
+
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+templates = Jinja2Templates(directory=str(templates_dir))
 
 
 # ============ PAGES ============
@@ -66,7 +78,10 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Página principal - Dashboard."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    try:
+        return templates.TemplateResponse("dashboard.html", {"request": request})
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error</h1><pre>{e}</pre><p>Templates dir: {templates_dir}</p><p>Files: {list(templates_dir.iterdir()) if templates_dir.exists() else 'DIR NOT FOUND'}</p>")
 
 
 # ============ API ENDPOINTS ============
