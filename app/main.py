@@ -28,7 +28,17 @@ async def lifespan(app: FastAPI):
     if predictor.load_model():
         print("✅ Modelo de predicción cargado.")
     else:
-        print("⚠️ No se encontró modelo. Use /api/train para entrenar.")
+        print("⚠️ No se encontró modelo. Entrenando automáticamente...")
+        # Entrenar con 1 año de datos para que sea rápido al arrancar
+        try:
+            df = await get_training_data(years_back=1, min_magnitude=3.0)
+            if not df.empty:
+                predictor.train(df)
+                print(f"✅ Modelo entrenado automáticamente con {len(df)} sismos.")
+            else:
+                print("⚠️ No se pudieron obtener datos para entrenamiento automático.")
+        except Exception as e:
+            print(f"⚠️ Error en entrenamiento automático: {e}")
     # Iniciar monitor en vivo
     await monitor.start()
     yield
