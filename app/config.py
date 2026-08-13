@@ -31,7 +31,10 @@ PREDICTION_DAYS_AHEAD = 30  # Días a futuro para predicción
 REGIONS = {
     "global": {"min_lat": -90, "max_lat": 90, "min_lon": -180, "max_lon": 180},
     "mexico": {"min_lat": 14, "max_lat": 33, "min_lon": -118, "max_lon": -86},
+    "colombia": {"min_lat": -4, "max_lat": 13, "min_lon": -82, "max_lon": -67},
     "chile": {"min_lat": -56, "max_lat": -17, "min_lon": -76, "max_lon": -66},
+    "peru": {"min_lat": -18, "max_lat": 0, "min_lon": -81, "max_lon": -68},
+    "ecuador": {"min_lat": -5, "max_lat": 2, "min_lon": -81, "max_lon": -75},
     "japon": {"min_lat": 24, "max_lat": 46, "min_lon": 122, "max_lon": 146},
     "california": {"min_lat": 32, "max_lat": 42, "min_lon": -125, "max_lon": -114},
     "indonesia": {"min_lat": -11, "max_lat": 6, "min_lon": 95, "max_lon": 141},

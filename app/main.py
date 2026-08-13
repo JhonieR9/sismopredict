@@ -96,6 +96,59 @@ async def dashboard(request: Request):
 
 # ============ API ENDPOINTS ============
 
+@app.get("/api/earthquakes/recent/{region}")
+async def get_recent_by_region(
+    region: str,
+    days: int = Query(default=30, ge=1, le=90),
+    min_mag: float = Query(default=2.0, ge=0, le=10),
+):
+    """Obtiene sismos recientes de una región específica (últimos N días)."""
+    try:
+        bounds = REGIONS.get(region)
+        if not bounds:
+            return {"status": "error", "message": f"Región '{region}' no encontrada. Disponibles: {list(REGIONS.keys())}"}
+
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days)
+
+        data = await fetch_historical_earthquakes(
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
+            min_magnitude=min_mag,
+            min_latitude=bounds["min_lat"],
+            max_latitude=bounds["max_lat"],
+            min_longitude=bounds["min_lon"],
+            max_longitude=bounds["max_lon"],
+        )
+        df = geojson_to_dataframe(data)
+
+        earthquakes = []
+        for _, row in df.iterrows():
+            earthquakes.append({
+                "id": row.get("id", ""),
+                "magnitude": row.get("magnitude"),
+                "place": row.get("place", ""),
+                "time": str(row.get("datetime", "")),
+                "latitude": row.get("latitude"),
+                "longitude": row.get("longitude"),
+                "depth": row.get("depth"),
+                "tsunami": row.get("tsunami", 0),
+                "sig": row.get("sig", 0),
+            })
+
+        return {
+            "status": "success",
+            "count": len(earthquakes),
+            "region": region,
+            "days": days,
+            "min_magnitude": min_mag,
+            "earthquakes": earthquakes,
+        }
+    except Exception as e:
+        print(f"⚠️ Error en recent/{region}: {e}")
+        return {"status": "success", "count": 0, "region": region, "earthquakes": []}
+
+
 @app.get("/api/earthquakes/realtime")
 async def get_realtime_earthquakes(
     feed: str = Query(default="day_m2.5", description="Feed de USGS a consultar")

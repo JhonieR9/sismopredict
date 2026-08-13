@@ -807,8 +807,11 @@
         <div class="header-controls">
             <select id="regionSelect">
                 <option value="">🌍 Global</option>
+                <option value="colombia">🇨🇴 Colombia</option>
                 <option value="mexico">🇲🇽 México</option>
                 <option value="chile">🇨🇱 Chile</option>
+                <option value="peru">🇵🇪 Perú</option>
+                <option value="ecuador">🇪🇨 Ecuador</option>
                 <option value="japon">🇯🇵 Japón</option>
                 <option value="california">🇺🇸 California</option>
                 <option value="indonesia">🇮🇩 Indonesia</option>
@@ -978,18 +981,37 @@
     // ===== DATA FETCHING =====
     async function fetchRealtimeData() {
         const feed = document.getElementById('feedSelect').value;
+        const region = document.getElementById('regionSelect').value;
+
         try {
-            const r = await fetch(`/api/earthquakes/realtime?feed=${feed}`);
-            const data = await r.json();
-            if (data.status === 'success') {
-                allQuakes = data.earthquakes;
-                updateMap(allQuakes);
-                updateRecentList(allQuakes);
-                updateAnalytics(allQuakes);
-                updateTimeline(allQuakes);
-                if (heatmapOn) updateHeatmap(allQuakes);
+            let quakes = [];
+
+            // Si hay una región seleccionada, cargar histórico de esa región (30 días)
+            if (region) {
+                const rRegion = await fetch(`/api/earthquakes/recent/${region}?days=30&min_mag=2.0`);
+                const regionData = await rRegion.json();
+                if (regionData.status === 'success' && regionData.earthquakes.length > 0) {
+                    quakes = regionData.earthquakes;
+                }
             }
+
+            // Si no hay región o no hubo datos regionales, cargar feed global
+            if (quakes.length === 0) {
+                const r = await fetch(`/api/earthquakes/realtime?feed=${feed}`);
+                const data = await r.json();
+                if (data.status === 'success') {
+                    quakes = data.earthquakes;
+                }
+            }
+
+            allQuakes = quakes;
+            updateMap(allQuakes);
+            updateRecentList(allQuakes);
+            updateAnalytics(allQuakes);
+            updateTimeline(allQuakes);
+            if (heatmapOn) updateHeatmap(allQuakes);
         } catch (e) {
+            console.error('Error fetching:', e);
             showToast('Error cargando datos', 'error');
         }
     }
@@ -1396,8 +1418,9 @@
     // Region select
     document.getElementById('regionSelect').addEventListener('change', () => {
         const r = document.getElementById('regionSelect').value;
-        const views = { mexico:[23,-102,5], chile:[-35,-71,4], japon:[36,138,5], california:[37,-120,6], indonesia:[-2,118,4] };
+        const views = { colombia:[4.5,-74,6], mexico:[23,-102,5], chile:[-35,-71,4], peru:[-10,-76,5], ecuador:[-1.5,-78,6], japon:[36,138,5], california:[37,-120,6], indonesia:[-2,118,4] };
         if (views[r]) map.setView(views[r].slice(0,2), views[r][2]); else map.setView([20,0],2);
+        fetchRealtimeData(); // Recargar datos de esa región
     });
     document.getElementById('feedSelect').addEventListener('change', fetchRealtimeData);
 
