@@ -986,21 +986,22 @@
         try {
             let quakes = [];
 
-            // Si hay una región seleccionada, cargar histórico de esa región (30 días)
             if (region) {
-                const rRegion = await fetch(`/api/earthquakes/recent/${region}?days=30&min_mag=2.0`);
-                const regionData = await rRegion.json();
-                if (regionData.status === 'success' && regionData.earthquakes.length > 0) {
-                    quakes = regionData.earthquakes;
-                }
-            }
-
-            // Si no hay región o no hubo datos regionales, cargar feed global
-            if (quakes.length === 0) {
+                // Región específica: cargar histórico de esa región
+                const r = await fetch(`/api/earthquakes/recent/${region}?days=30&min_mag=2.0`);
+                const data = await r.json();
+                if (data.status === 'success') quakes = data.earthquakes;
+            } else {
+                // Global: intentar feed realtime, si falla usar histórico global
                 const r = await fetch(`/api/earthquakes/realtime?feed=${feed}`);
                 const data = await r.json();
-                if (data.status === 'success') {
+                if (data.status === 'success' && data.earthquakes.length > 0) {
                     quakes = data.earthquakes;
+                } else {
+                    // Fallback: histórico global últimos 7 días M4+
+                    const r2 = await fetch('/api/earthquakes/recent/global?days=7&min_mag=4.0');
+                    const data2 = await r2.json();
+                    if (data2.status === 'success') quakes = data2.earthquakes;
                 }
             }
 
@@ -1010,9 +1011,12 @@
             updateAnalytics(allQuakes);
             updateTimeline(allQuakes);
             if (heatmapOn) updateHeatmap(allQuakes);
+
+            if (quakes.length === 0) {
+                showToast('Sin datos disponibles. Intenta seleccionar una región.', 'warning');
+            }
         } catch (e) {
             console.error('Error fetching:', e);
-            showToast('Error cargando datos', 'error');
         }
     }
 
