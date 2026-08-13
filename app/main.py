@@ -17,6 +17,7 @@ from app.data_fetcher import (
 )
 from app.predictor import predictor
 from app.live_monitor import monitor
+from app.community import community
 from app.config import REGIONS, FEEDS, MODEL_PATH
 
 
@@ -440,3 +441,83 @@ async def live_status():
         "last_check": monitor.last_check.isoformat() if monitor.last_check else None,
         "stats": monitor.stats,
     }
+
+
+# ============ COMMUNITY ENDPOINTS ============
+
+@app.post("/api/community/report")
+async def submit_felt_report(request: Request):
+    """Reportar 'Yo lo sentí' - El usuario reporta que sintió un sismo."""
+    try:
+        data = await request.json()
+
+        # Validar campos requeridos
+        if "latitude" not in data or "longitude" not in data:
+            return {"status": "error", "message": "Se requiere latitude y longitude"}
+
+        report = await community.add_report(data)
+
+        return {
+            "status": "success",
+            "message": "Reporte registrado. ¡Gracias por contribuir!",
+            "report": report,
+            "community_stats": community.get_stats(),
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/community/reports")
+async def get_community_reports(hours: int = Query(default=24, ge=1, le=168)):
+    """Obtiene reportes recientes de la comunidad."""
+    reports = community.get_recent_reports(hours)
+    return {
+        "status": "success",
+        "count": len(reports),
+        "hours": hours,
+        "reports": reports,
+        "stats": community.get_stats(),
+        "detected_events": community.detected_events[-10:],
+    }
+
+
+@app.get("/api/community/heatmap")
+async def get_community_heatmap():
+    """Datos para mapa de calor de reportes comunitarios."""
+    return {
+        "status": "success",
+        "data": community.get_heatmap_data(),
+    }
+
+
+@app.get("/api/community/stream")
+async def community_stream(request: Request):
+    """Stream SSE de reportes comunitarios en tiempo real."""
+    queue = community.subscribe()
+
+    async def event_generator():
+        import json
+        try:
+            # Enviar estado actual
+            yield f"data: {json.dumps({'type': 'connected', 'stats': community.get_stats()})}\n\n"
+
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=20.0)
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+
+                if await request.is_disconnected():
+                    break
+        except asyncio.CancelledError:
+            pass
+        finally:
+            community.unsubscribe(queue)
+
+    import asyncio
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )

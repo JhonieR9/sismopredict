@@ -731,6 +731,39 @@
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+        /* Felt Report Styles */
+        @keyframes pulseBtn {
+            0%, 100% { box-shadow: 0 4px 20px rgba(239,68,68,0.4); }
+            50% { box-shadow: 0 4px 30px rgba(239,68,68,0.7); }
+        }
+
+        .int-btn {
+            background: var(--accent); border: 2px solid var(--border);
+            border-radius: 10px; padding: 0.6rem 0.3rem; text-align: center;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .int-btn:hover, .int-btn.selected {
+            border-color: var(--highlight); background: rgba(233,69,96,0.15);
+            transform: scale(1.05);
+        }
+
+        .dur-btn {
+            background: var(--accent); border: 1px solid var(--border);
+            color: var(--text); padding: 0.4rem 0.8rem; border-radius: 8px;
+            cursor: pointer; font-size: 0.8rem; transition: all 0.2s;
+        }
+        .dur-btn:hover, .dur-btn.selected {
+            border-color: var(--info); background: rgba(59,130,246,0.15);
+        }
+
+        /* Community Reports in sidebar */
+        .community-badge {
+            display: inline-flex; align-items: center; gap: 0.3rem;
+            background: rgba(239,68,68,0.15); color: var(--danger);
+            font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -739,6 +772,95 @@
         <i class="fas fa-exclamation-triangle"></i>
         <span id="alertBannerText"></span>
         <span class="close" onclick="document.getElementById('alertBanner').style.display='none'">✕</span>
+    </div>
+
+    <!-- Botón flotante "Yo lo sentí" -->
+    <div id="feltButton" onclick="openFeltReport()" style="
+        position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+        z-index: 9000; background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white; border: none; border-radius: 50px; padding: 1rem 2rem;
+        font-size: 1rem; font-weight: 700; cursor: pointer;
+        box-shadow: 0 4px 20px rgba(239,68,68,0.4); display: flex; align-items: center; gap: 0.6rem;
+        transition: all 0.3s; animation: pulseBtn 3s infinite;
+    ">
+        <i class="fas fa-hand-paper" style="font-size: 1.2rem;"></i> ¡Yo lo sentí!
+    </div>
+
+    <!-- Modal "Yo lo sentí" -->
+    <div class="modal-overlay" id="feltModal">
+        <div class="modal" style="max-width: 420px;">
+            <button class="btn-close-modal" onclick="closeFeltReport()">✕</button>
+            <h2 style="text-align: center;">🫨 ¿Sentiste un sismo?</h2>
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1.5rem;">
+                Tu reporte ayuda a detectar sismos antes que las agencias oficiales. Cuantos más reporten, más rápido alertamos.
+            </p>
+
+            <div class="modal-section">
+                <h3>¿Qué tan fuerte lo sentiste?</h3>
+                <div id="intensitySelector" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin-top: 0.5rem;">
+                    <div class="int-btn" data-val="2" onclick="selectIntensity(2)">
+                        <div style="font-size: 1.2rem;">😐</div><div style="font-size: 0.6rem;">Leve</div>
+                    </div>
+                    <div class="int-btn" data-val="4" onclick="selectIntensity(4)">
+                        <div style="font-size: 1.2rem;">😟</div><div style="font-size: 0.6rem;">Moderado</div>
+                    </div>
+                    <div class="int-btn" data-val="6" onclick="selectIntensity(6)">
+                        <div style="font-size: 1.2rem;">😰</div><div style="font-size: 0.6rem;">Fuerte</div>
+                    </div>
+                    <div class="int-btn" data-val="8" onclick="selectIntensity(8)">
+                        <div style="font-size: 1.2rem;">😱</div><div style="font-size: 0.6rem;">Muy fuerte</div>
+                    </div>
+                    <div class="int-btn" data-val="10" onclick="selectIntensity(10)">
+                        <div style="font-size: 1.2rem;">🏚️</div><div style="font-size: 0.6rem;">Violento</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3>¿Cuánto duró?</h3>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button class="dur-btn" onclick="selectDuration(3)">~3 seg</button>
+                    <button class="dur-btn" onclick="selectDuration(10)">~10 seg</button>
+                    <button class="dur-btn" onclick="selectDuration(20)">~20 seg</button>
+                    <button class="dur-btn" onclick="selectDuration(30)">~30 seg</button>
+                    <button class="dur-btn" onclick="selectDuration(60)">1+ min</button>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3>¿Dónde estás?</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="dur-btn" onclick="selectIndoors(true)" id="btnIndoors">🏠 Interior</button>
+                    <button class="dur-btn" onclick="selectIndoors(false)" id="btnOutdoors">🌳 Exterior</button>
+                </div>
+                <div style="margin-top: 0.5rem;">
+                    <input type="text" id="feltCity" placeholder="Ciudad (opcional)" style="
+                        width: 100%; padding: 0.5rem; background: var(--accent); border: 1px solid var(--border);
+                        border-radius: 8px; color: var(--text); font-size: 0.85rem;
+                    ">
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <h3>Comentario (opcional)</h3>
+                <textarea id="feltDescription" placeholder="Ej: Se movieron los cuadros, cayeron cosas..." style="
+                    width: 100%; padding: 0.5rem; background: var(--accent); border: 1px solid var(--border);
+                    border-radius: 8px; color: var(--text); font-size: 0.85rem; min-height: 60px; resize: vertical;
+                "></textarea>
+            </div>
+
+            <button onclick="submitFeltReport()" style="
+                width: 100%; padding: 0.9rem; background: linear-gradient(135deg, #ef4444, #dc2626);
+                border: none; border-radius: 10px; color: white; font-size: 1rem;
+                font-weight: 700; cursor: pointer; margin-top: 0.5rem;
+            ">
+                <i class="fas fa-paper-plane"></i> Enviar Reporte
+            </button>
+
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.7rem; margin-top: 0.8rem;">
+                📍 Se usará tu ubicación automáticamente. Tus datos son anónimos.
+            </p>
+        </div>
     </div>
 
     <!-- Settings Modal -->
@@ -1429,6 +1551,138 @@
     if ('Notification' in window && Notification.permission === 'default') {
         document.addEventListener('click', () => Notification.requestPermission(), { once: true });
     }
+
+    // ===== COMMUNITY - "YO LO SENTÍ" =====
+    let feltData = { intensity: 0, duration_seconds: 0, indoors: true };
+
+    function openFeltReport() {
+        // Pedir ubicación si no la tenemos
+        if (!userLocation) {
+            requestLocation();
+        }
+        document.getElementById('feltModal').classList.add('active');
+    }
+
+    function closeFeltReport() {
+        document.getElementById('feltModal').classList.remove('active');
+    }
+
+    function selectIntensity(val) {
+        feltData.intensity = val;
+        document.querySelectorAll('.int-btn').forEach(b => b.classList.remove('selected'));
+        document.querySelector(`.int-btn[data-val="${val}"]`).classList.add('selected');
+    }
+
+    function selectDuration(val) {
+        feltData.duration_seconds = val;
+        document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('selected'));
+        event.target.classList.add('selected');
+    }
+
+    function selectIndoors(val) {
+        feltData.indoors = val;
+        document.getElementById('btnIndoors').classList.toggle('selected', val);
+        document.getElementById('btnOutdoors').classList.toggle('selected', !val);
+    }
+
+    async function submitFeltReport() {
+        if (!feltData.intensity) {
+            showToast('Selecciona la intensidad que sentiste', 'warning');
+            return;
+        }
+
+        // Obtener ubicación
+        let lat, lon;
+        if (userLocation) {
+            lat = userLocation.lat;
+            lon = userLocation.lon;
+        } else {
+            showToast('Necesitamos tu ubicación. Haz clic en "Detectar ubicación" en ⚙️', 'warning');
+            return;
+        }
+
+        const report = {
+            latitude: lat,
+            longitude: lon,
+            intensity: feltData.intensity,
+            duration_seconds: feltData.duration_seconds,
+            indoors: feltData.indoors,
+            city: document.getElementById('feltCity').value,
+            description: document.getElementById('feltDescription').value,
+            country: "Colombia",
+        };
+
+        try {
+            const r = await fetch('/api/community/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(report),
+            });
+            const data = await r.json();
+
+            if (data.status === 'success') {
+                showToast('✅ Reporte enviado. ¡Gracias por contribuir!', 'success');
+                closeFeltReport();
+
+                // Agregar marcador al mapa
+                if (lat && lon) {
+                    L.circleMarker([lat, lon], {
+                        radius: 8, fillColor: '#ef4444', color: '#fca5a5',
+                        weight: 2, fillOpacity: 0.7
+                    }).addTo(earthquakeLayer).bindPopup(`<strong>🫨 Reporte comunitario</strong><br>Intensidad: ${feltData.intensity}/10<br>${document.getElementById('feltCity').value || 'Sin ciudad'}`);
+                }
+
+                // Reset form
+                feltData = { intensity: 0, duration_seconds: 0, indoors: true };
+                document.querySelectorAll('.int-btn, .dur-btn').forEach(b => b.classList.remove('selected'));
+                document.getElementById('feltCity').value = '';
+                document.getElementById('feltDescription').value = '';
+
+                // Mostrar stats
+                if (data.community_stats.reports_last_hour >= 3) {
+                    showToast(`🚨 ${data.community_stats.reports_last_hour} personas reportaron en la última hora`, 'warning');
+                }
+            }
+        } catch (e) {
+            showToast('Error enviando reporte', 'error');
+        }
+    }
+
+    // Conectar al stream de comunidad
+    function connectCommunitySSE() {
+        const cs = new EventSource('/api/community/stream');
+        cs.onmessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.type === 'community_detection') {
+                    // Alguien detectó un sismo comunitariamente
+                    const ev = data.event;
+                    showToast(`🫨 ¡SISMO DETECTADO POR LA COMUNIDAD! ${ev.report_count} reportes - Magnitud estimada: ${ev.estimated_magnitude}`, 'error');
+
+                    // Mostrar en mapa
+                    L.circle([ev.latitude, ev.longitude], {
+                        radius: 50000, fillColor: '#ef4444', color: '#ef4444',
+                        weight: 2, fillOpacity: 0.2, dashArray: '5,5'
+                    }).addTo(earthquakeLayer).bindPopup(`<strong>🫨 Sismo comunitario</strong><br>Mag estimada: ~${ev.estimated_magnitude}<br>${ev.report_count} reportes<br>Confianza: ${(ev.confidence*100).toFixed(0)}%`);
+
+                    // Notificación del navegador
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('🫨 Sismo detectado por la comunidad', {
+                            body: `${ev.report_count} personas reportaron. Mag estimada: ~${ev.estimated_magnitude}`,
+                        });
+                    }
+                }
+
+                if (data.type === 'new_report' && data.total_reports_last_hour >= 3) {
+                    // Actualizar badge
+                    const btn = document.getElementById('feltButton');
+                    btn.innerHTML = `<i class="fas fa-hand-paper"></i> ¡Yo lo sentí! <span class="community-badge">${data.total_reports_last_hour} reportes</span>`;
+                }
+            } catch(err) {}
+        };
+    }
+
+    connectCommunitySSE();
 
     // ===== INIT =====
     loadSettings();
