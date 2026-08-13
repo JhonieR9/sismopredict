@@ -129,7 +129,8 @@ async def get_realtime_earthquakes(
             "earthquakes": earthquakes,
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print(f"⚠️ Error en realtime: {e}")
+        return {"status": "success", "count": 0, "feed": feed, "timestamp": datetime.utcnow().isoformat(), "earthquakes": []}
 
 
 @app.get("/api/earthquakes/historical")

@@ -7,6 +7,13 @@ from datetime import datetime, timedelta
 from typing import Optional
 from app.config import USGS_BASE_URL, FEEDS
 
+# Cache en memoria para evitar errores de conectividad
+_cache = {}
+_HEADERS = {
+    "User-Agent": "SismoPredict/1.0 (earthquake monitoring app)",
+    "Accept": "application/json",
+}
+
 
 async def fetch_realtime_earthquakes(feed: str = "day_m2.5") -> dict:
     """Obtiene sismos en tiempo real desde USGS feeds."""
@@ -16,14 +23,23 @@ async def fetch_realtime_earthquakes(feed: str = "day_m2.5") -> dict:
 
     for attempt in range(3):
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.get(url)
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                follow_redirects=True,
+            ) as client:
+                response = await client.get(url, headers=_HEADERS)
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+                _cache[f"realtime_{feed}"] = data  # Guardar en cache
+                return data
         except Exception as e:
             if attempt < 2:
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
                 continue
+            # Si falla, devolver cache si existe
+            if f"realtime_{feed}" in _cache:
+                print(f"⚠️ USGS no responde, usando caché para {feed}")
+                return _cache[f"realtime_{feed}"]
             raise e
 
 
@@ -56,8 +72,11 @@ async def fetch_historical_earthquakes(
     if max_longitude is not None:
         params["maxlongitude"] = max_longitude
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.get(USGS_BASE_URL, params=params)
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(60.0, connect=15.0),
+        follow_redirects=True,
+    ) as client:
+        response = await client.get(USGS_BASE_URL, params=params, headers=_HEADERS)
         response.raise_for_status()
         return response.json()
 
