@@ -817,10 +817,10 @@
                 <option value="indonesia">🇮🇩 Indonesia</option>
             </select>
             <select id="feedSelect">
-                <option value="day_m2.5">24h (M2.5+)</option>
-                <option value="day_m4.5">24h (M4.5+)</option>
-                <option value="week_m4.5">7d (M4.5+)</option>
-                <option value="month_m4.5">30d (M4.5+)</option>
+                <option value="7">Últimos 7 días</option>
+                <option value="3">Últimos 3 días</option>
+                <option value="1">Últimas 24h</option>
+                <option value="30">Últimos 30 días</option>
             </select>
             <button onclick="openSettings()"><i class="fas fa-cog"></i></button>
             <button onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
@@ -985,23 +985,19 @@
 
         try {
             let quakes = [];
+            const days = document.getElementById('feedSelect').value;
 
             if (region) {
-                // Región específica: cargar histórico de esa región
-                const r = await fetch(`/api/earthquakes/recent/${region}?days=30&min_mag=2.0`);
+                // Región específica: cargar histórico
+                const r = await fetch(`/api/earthquakes/recent/${region}?days=${days}&min_mag=2.0`);
                 const data = await r.json();
                 if (data.status === 'success') quakes = data.earthquakes;
             } else {
-                // Global: intentar feed realtime, si falla usar histórico global
-                const r = await fetch(`/api/earthquakes/realtime?feed=${feed}`);
+                // Global: cargar histórico (como Earthquake app)
+                const r = await fetch(`/api/earthquakes/recent/global?days=${days}&min_mag=2.5`);
                 const data = await r.json();
                 if (data.status === 'success' && data.earthquakes.length > 0) {
                     quakes = data.earthquakes;
-                } else {
-                    // Fallback: histórico global últimos 7 días M4+
-                    const r2 = await fetch('/api/earthquakes/recent/global?days=7&min_mag=4.0');
-                    const data2 = await r2.json();
-                    if (data2.status === 'success') quakes = data2.earthquakes;
                 }
             }
 
@@ -1013,7 +1009,7 @@
             if (heatmapOn) updateHeatmap(allQuakes);
 
             if (quakes.length === 0) {
-                showToast('Sin datos disponibles. Intenta seleccionar una región.', 'warning');
+                showToast('Sin datos. Intenta de nuevo en unos segundos.', 'warning');
             }
         } catch (e) {
             console.error('Error fetching:', e);
