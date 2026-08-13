@@ -817,10 +817,11 @@
                 <option value="indonesia">🇮🇩 Indonesia</option>
             </select>
             <select id="feedSelect">
+                <option value="30">Últimos 30 días</option>
                 <option value="7">Últimos 7 días</option>
                 <option value="3">Últimos 3 días</option>
                 <option value="1">Últimas 24h</option>
-                <option value="30">Últimos 30 días</option>
+                <option value="60">Últimos 60 días</option>
             </select>
             <button onclick="openSettings()"><i class="fas fa-cog"></i></button>
             <button onclick="refreshData()"><i class="fas fa-sync-alt"></i></button>
@@ -988,8 +989,9 @@
             const days = document.getElementById('feedSelect').value;
 
             if (region) {
-                // Región específica: cargar histórico
-                const r = await fetch(`/api/earthquakes/recent/${region}?days=${days}&min_mag=2.0`);
+                // Región específica: cargar histórico con magnitud mínima más baja
+                const minMag = (region === 'colombia' || region === 'mexico' || region === 'chile' || region === 'peru' || region === 'ecuador') ? 1.0 : 2.0;
+                const r = await fetch(`/api/earthquakes/recent/${region}?days=${days}&min_mag=${minMag}`);
                 const data = await r.json();
                 if (data.status === 'success') quakes = data.earthquakes;
             } else {
